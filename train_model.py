@@ -10,8 +10,10 @@ def train_model(model, train_dataset, valid_dataset, criterion, optimizer, args,
     total_step = len(train_dataset)
 
     for epoch in range(args['EPOCHS']):
+
         print("\nStart of epoch %d" % (epoch,))
         running_loss = 0
+
         # Iterate over the batches of the dataset.
         for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
 
@@ -36,7 +38,7 @@ def train_model(model, train_dataset, valid_dataset, criterion, optimizer, args,
             # the value of the variables to minimize the loss.
             optimizer.apply_gradients(zip(grads, model.trainable_weights))
             running_loss += loss_value
-            # Log every 200 batches.
+
             if step % total_step == (total_step - 1):
 
                 # Run a validation loop at the end of each epoch.
