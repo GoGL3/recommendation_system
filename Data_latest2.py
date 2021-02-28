@@ -14,17 +14,17 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
-DIR = 'data/'
+# DIR = 'data/'
 
 
 class Data:
 
-    def __init__(self, DIR):
+    def __init__(self):
         """
         :objective: load raw data
         :param: DIR = data location
         """
-        self.DIR = DIR
+        self.DIR = 'data/'
 
         ## META
         self.meta = pd.read_json(self.DIR + 'metadata.json', lines=True)
@@ -221,7 +221,7 @@ class Data:
         ##############
         # 1. Train data
         user_input, item_input, year_input, month_input, \
-        weekday_input, daytime_input,labels = self.get_train_instances(uids, iids, num_neg=4, df_order, df_train)
+        weekday_input, daytime_input,labels = self.get_train_instances(uids, iids, num_neg, df_order, df_train)
 
 
         ##############
@@ -360,5 +360,5 @@ class Data:
 
 # collab_mapped.csv 있어야함
 # Data = Data()
-# df_order = Data.prepare_df()
-# ~ = Data.load_df(df_order)
+# df_order = Data.load_df()
+# ~ = Data.prepaer_df(df_order)
