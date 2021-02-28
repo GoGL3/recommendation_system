@@ -14,17 +14,15 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
-# DIR = 'data/'
-
-
 class Data:
 
-    def __init__(self):
+    def __init__(self, args):
         """
         :objective: load raw data
         :param: DIR = data location
         """
-        self.DIR = 'data/'
+        self.args = args
+        self.DIR = args['PATH']
 
         ## META
         self.meta = pd.read_json(self.DIR + 'metadata.json', lines=True)
@@ -41,7 +39,7 @@ class Data:
         self.users = pd.read_json(self.DIR + '/users.json', lines = True)
 
         ## READ
-        self.read_file_lst = glob.glob(self.DIR +'/read/*')
+        self.read_file_lst = glob.glob(self.DIR + '/read/*')
 
         exclude_file_lst = ['read.tar']
         read_df_lst = []
@@ -72,8 +70,8 @@ class Data:
         # User
         user_follow = self.users['following_list'].map(len)
         self.user_pr = pd.DataFrame({'keyword_list': np.repeat(self.users['keyword_list'], user_follow),
-                                 'id': np.repeat(self.users['id'], user_follow),
-                                 'following_list': self.chainer(self.users['following_list'],'user')})
+                                     'id': np.repeat(self.users['id'], user_follow),
+                                     'following_list': self.chainer(self.users['following_list'], 'user')})
         # Read
         # Contextual Features
         read_ctx = self.read.copy()
@@ -105,16 +103,16 @@ class Data:
         """
         :objective: --'preprocess_user_item' FE
         """
-        if 6<=hour<=11:
-            time=1
-        elif 11<hour<=16:
-            time=2
-        elif 16<hour<=21:
-            time=3
-        elif 21<hour<=2:
-            time=4
+        if 6 <= hour <= 11:
+            time = 1
+        elif 11 < hour <= 16:
+            time = 2
+        elif 16 < hour <= 21:
+            time = 3
+        elif 21 < hour <= 2:
+            time = 4
         else:
-            time=5
+            time = 5
         return time
 
     def get_df_user_view_cnt(self):
@@ -125,10 +123,10 @@ class Data:
         read_view['val'] = 1
 
         df_user_view_cnt = read_view.groupby(by=['user_id','article_id',
-        "year","month","weekday","daytime"], as_index=False).count()
+            "year","month","weekday","daytime"], as_index=False).count()
         self.df_user_view_cnt_drop = df_user_view_cnt.drop(df_user_view_cnt[df_user_view_cnt.val>20].index)
-        self.df_user_view_cnt_drop=self.df_user_view_cnt_drop.drop(['val'], axis=1)
-        self.df_user_view_cnt_drop['val']=1
+        self.df_user_view_cnt_drop = self.df_user_view_cnt_drop.drop(['val'], axis=1)
+        self.df_user_view_cnt_drop['val'] = 1
 
         #df_user_view_day_cnt = read_view.groupby(by=['user_id','article_id','dt'], as_index=False).count()
         #df_user_day_cnt = read_view.groupby(by=['user_id','dt'], as_index=False).count()
@@ -154,7 +152,6 @@ class Data:
         if save:
             self.mapped_df.to_csv(path_or_buf = "collab_mapped.csv", index = False, header = False)
 
-
     def create_mapping(self,values,filename):
         """
         :objective: expand elements in list to separate rows
@@ -178,7 +175,6 @@ class Data:
         self.save_mapping(save=True)
         self.create_mapping()
 
-
     def load_df(self):
         """
         :objective: prepare preprocessed data before creating test / train
@@ -186,7 +182,7 @@ class Data:
         """
         file_path = 'collab_mapped.csv'
         if (os.path.exists(file_path)):
-            df = pd.read_csv('read_pr.csv',names=['user_id','item_id','year','month','weekday','daytime','val'])
+            df = pd.read_csv('read_pr.csv', names=['user_id', 'item_id', 'year', 'month', 'weekday', 'daytime', 'val'])
             print('Load preprocessed data')
         else:
             print('Preprocessing...might take hours')
@@ -195,10 +191,9 @@ class Data:
 
         # Order data
         df_order = df.copy()
-        df_order = df_order.sort_values(by=['year','month','weekday','daytime'])
+        df_order = df_order.sort_values(by=['year', 'month', 'weekday', 'daytime'])
 
         return df_order
-
 
     def prepare_df(self, df_order):
         # Split train / test
@@ -221,21 +216,18 @@ class Data:
         ##############
         # 1. Train data
         user_input, item_input, year_input, month_input, \
-        weekday_input, daytime_input,labels = self.get_train_instances(uids, iids, num_neg, df_order, df_train)
-
+        weekday_input, daytime_input,labels = self.get_train_instances(uids, iids, self.args['NUM_NEG'], df_order, df_train)
 
         ##############
         # 2. Test data
         df_test_neg = self.get_negatives(uids, iids, items, df_test)
 
+        return uids, iids, df_train, df_test, df_test_neg, users, items, \
+            user_input, item_input, year_input, month_input, weekday_input, daytime_input, labels
 
-        return uids, iids, df_train, df_test, df_train_neg, users, items, user_input, item_input, year_input, month_input, \
-        weekday_input, daytime_input, labels
-
-
-    def get_negatives(uids, iids, items, df_test):
+    def get_negatives(self, uids, iids, items, df_test):
         """
-        :objective:: get train data with negative samples
+        :objective:: get data with negative samples
         :args:
             uids (np.array): Numpy array of all user ids.
             iids (np.array): Numpy array of all item ids.
@@ -277,7 +269,7 @@ class Data:
 
         return result
 
-    def train_test_split(self,df):
+    def train_test_split(self, df: pd.DataFrame) -> [pd.DataFrame, pd.DataFrame]:
         """
         Splits our original data into one test and one
         training set.
@@ -308,6 +300,7 @@ class Data:
         return df_train, df_test
 
     def get_train_instances(self, uids, iids, num_neg, df_order, df_train):
+
         """
         :objective: get train data with negative samples
         """
@@ -350,7 +343,6 @@ class Data:
                 weekday_input.append(weekday)
                 daytime_input.append(daytime)
                 labels.append(0)      # [1, 0,  0,  ...
-
 
         return user_input, item_input, year_input, month_input, weekday_input, daytime_input, labels
 
