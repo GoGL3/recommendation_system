@@ -1,8 +1,3 @@
-#import tensorflow as tf
-#from tensorflow.keras.layers import *
-#from tensorflow.keras.models import Model
-#import argparse
-
 import keras
 from keras import backend as K
 from keras import initializers
@@ -21,35 +16,10 @@ import argparse
 import multiprocessing as mp
 
 from Loader import Loader
-
-#################### Arguments ####################
-def parse_args():
-    parser = argparse.ArgumentParser(description="Run MLP.")
-    parser.add_argument('--path', nargs='?', default='Data/',
-                        help='Input data path.')
-    parser.add_argument('--dataset', nargs='?', default='brunch',
-                        help='Choose a dataset.')
-    parser.add_argument('--epochs', type=int, default=100,
-                        help='Number of epochs.')
-    parser.add_argument('--batch_size', type=int, default=256,
-                        help='Batch size.')
-    parser.add_argument('--layers', nargs='?', default='[64,32,16,8]',
-                        help="Size of each layer. Note that the first layer is the concatenation of user and item embeddings. So layers[0]/2 is the embedding size.")
-    parser.add_argument('--num_neg', type=int, default=4,
-                        help='Number of negative instances to pair with a positive instance.')
-    parser.add_argument('--lr', type=float, default=0.001,
-                        help='Learning rate.')
-    parser.add_argument('--learner', nargs='?', default='adam',
-                        help='Specify an optimizer: adagrad, adam, rmsprop, sgd')
-    parser.add_argument('--verbose', type=int, default=1,
-                        help='Show performance per X iterations')
-    parser.add_argument('--out', type=int, default=1,
-                        help='Whether to save the trained model.')
-    return parser.parse_args()
+from args import Args
 
 
-def get_model(user_num, item_num, context_num, layers = [20,64,32,16,8]):
-    num_layer = len(layers) # number of mlp layers
+def get_MLP(user_num, item_num, context_num, layers = [20,64,32,16,8]):
 
     ## Embedding Layer ##
 
@@ -99,70 +69,50 @@ def get_model(user_num, item_num, context_num, layers = [20,64,32,16,8]):
     return model
 
 
-
 ###############################
 ##       Get train data      ##
 ###############################
+# def get_train_instances():
 
-def get_train_instances():
-
-
-
-
-
-###############################
 
 if __name__ == '__main__':
-    args = parse_args()
-    path = args.path
-    dataset = args.dataset
-    layers = eval(args.layers)
-    num_negatives = args.num_neg
-    learner = args.learner
-    learning_rate = args.lr
-    batch_size = args.batch_size
-    epochs = args.epochs
-    verbose = args.verbose
 
+    args = Args().params
     topK = 10
     evaluation_threads = 1 #mp.cpu_count()
-    print("MLP arguments: %s " %(args))
-    model_out_file = 'Pretrain/%s_MLP_%s_%d.h5' %(args.dataset, args.layers, time())
+    print("MLP arguments: %s " % args)
+    model_out_file = 'Pretrain/%s_MLP_%s_%d.h5' %(args['DATASET'], args['LAYERS'], time())
+
+    ###############################
+    ##         Load Data         ##
+    ###############################
+    t1 = time()
+    dataset = Loader(args['PATH'] + args['DATASET'])
+    train, testRatings, testNegatives = None
+    user_num, item_num = None
+    print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d"
+          %(time()-t1, num_users, num_items, ))
+
+    # Build model
+    model = get_model(num_users, num_items, layers)
+    opt = keras.optimizers.Adam(learning_rate=learning_rate)
+    model.compile(optimizer=opt, loss='binary_crossentropy')
+
+    ##         Evaluation        ##
+    ###############################
+    # Generate training instances
+
+    user, item, context, labels = get_train_instances(train, num_negatives)
+
+    # Training
+    hist = model.fit([np.array(user), np.array(item)],
+                     np.array(labels), # labels
+                     batch_size=batch_size,
+                     nb_epoch=1,
+                     verbose=0)
+    t2 = time()
 
 
-###############################
-##         Load Data         ##
-###############################
-# Load data
-t1 = time()
-dataset = Loader(args.path + args.dataset)
-train, testRatings, testNegatives =
-user_num, item_num =
-print("Load data done [%.1f s]. #user=%d, #item=%d, #train=%d, #test=%d"
-      %(time()-t1, num_users, num_items, ))
-
-# Build model
-model = get_model(num_users, num_items, layers)
-opt = keras.optimizers.Adam(learning_rate=learning_rate)
-model.compile(optimizer=opt, loss='binary_crossentropy')
-
-
-###############################
-##         Evaluation        ##
-###############################
-# Generate training instances
-user, item, context, labels = get_train_instances(train, num_negatives)
-
-# Training
-hist = model.fit([np.array(user), np.array(item)],
-                 np.array(labels), # labels
-                 batch_size=batch_size,
-                 nb_epoch=1,
-                 verbose=0)
-t2 = time()
-
-
-# Evaluation
 
 
 
@@ -174,9 +124,7 @@ t2 = time()
 ##            FIX
 ###############################
 def get_train_instances(train, num_neg):
-        """
-        모델에 사용할 train 데이터 생성 함수
-        """
+        # 모델에 사용할 train 데이터 생성 함수
         num_items =
         uids =
         iids =
@@ -229,7 +177,7 @@ def get_train_instances(train, num_neg):
         t2 = time()
 
         # Evaluation
-        if epoch %verbose == 0:
+        if epoch % verbose == 0:
             (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, topK, evaluation_threads)
             hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist.history['loss'][0]
             print('Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]'
