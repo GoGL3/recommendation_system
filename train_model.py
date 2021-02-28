@@ -15,7 +15,7 @@ def train_model(model, train_dataset, valid_dataset, criterion, optimizer, args,
         running_loss = 0
 
         # Iterate over the batches of the dataset.
-        for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
+        for step, (user_batch_train, item_batch_train, y_batch_train) in enumerate(train_dataset):
 
             # Open a GradientTape to record the operations run
             # during the forward pass, which enables auto-differentiation.
@@ -25,7 +25,7 @@ def train_model(model, train_dataset, valid_dataset, criterion, optimizer, args,
                 # The operations that the layer applies
                 # to its inputs are going to be recorded
                 # on the GradientTape.
-                logits = model(x_batch_train, training=True)  # Logits for this minibatch
+                logits = model([user_batch_train, item_batch_train], training=True)  # Logits for this minibatch
 
                 # Compute the loss value for this minibatch.
                 loss_value = criterion(y_batch_train, logits)

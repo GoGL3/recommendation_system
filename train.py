@@ -1,5 +1,5 @@
-import numpy as np
 import keras
+import tensorflow as tf
 from sklearn.utils import shuffle
 
 from NeuMF import NeuMF
@@ -9,7 +9,7 @@ from train_model import train_model
 from args import Args
 
 
-def main(args, logger, train_dataset):
+def main(args, logger):
 
     # Instantiate an optimizer.
     optimizer = keras.optimizers.Adam(learning_rate=args['LR'])
@@ -41,12 +41,30 @@ def main(args, logger, train_dataset):
     user_input, item_input, year_input, month_input, weekday_input, daytime_input, labels = \
         loader.prepare_df(df_order)
 
+    """
+    # Prepare the training dataset.
+    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+
+    # Reserve 10,000 samples for validation.
+    x_val = x_train[-10000:]
+    y_val = y_train[-10000:]
+    x_train = x_train[:-10000]
+    y_train = y_train[:-10000]
+
+    # Prepare the training dataset.
+    train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+    train_dataset = train_dataset.shuffle(buffer_size=1024).batch(args['BATCH_SIZE'])
+
+    # Prepare the validation dataset.
+    val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
+    val_dataset = val_dataset.batch(args['BATCH_SIZE'])
+    """
     # Model initialize
     model = NeuMF(len(user_input), len(item_input))
-    train_model(model, train_dataset, df_test_neg, criterion, optimizer, args, logger)
+    train_model(model, train_dataset, val_dataset, criterion, optimizer, args, logger)
 
 
 if __name__ == "__main__":
     args = Args().params
     logger = get_log()
-    main(args, logger, train_dataset)
+    main(args, logger)

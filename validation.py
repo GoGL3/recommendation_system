@@ -1,10 +1,11 @@
 
-def validation(model, valid_dataset, criterion, args):
+def validation(model, valid_dataset, criterion):
     valid_loss = 0
 
     # Run a validation loop at the end of each epoch.
-    for x_batch_val, y_batch_val in valid_dataset:
-        val_logits = model(x_batch_val, training=False)
+    for user_batch_val, item_batch_val, y_batch_val in valid_dataset:
+
+        val_logits = model([user_batch_val, item_batch_val], training=False)
         loss = criterion(y_batch_val, val_logits)
         valid_loss += loss
 
