@@ -5,13 +5,14 @@ from tensorflow.keras.models import Model
 
 class NeuMF:
 
-    def __init__(self, user_num, item_num):
+    def __init__(self, user_num, item_num, context_num):
 
         latent_features = 8
 
         # Input
         user = Input(shape=(1,), dtype='int32')
         item = Input(shape=(1,), dtype='int32')
+        context = Input(shape=(1,), dtype='int32')
 
         # User embedding for GMF
         gmf_user_embedding = Embedding(user_num, latent_features, input_length=user.shape[1])(user)
@@ -29,11 +30,15 @@ class NeuMF:
         mlp_item_embedding = Embedding(item_num, 32, input_length=item.shape[1])(item)
         mlp_item_embedding = Flatten()(mlp_item_embedding)
 
+        # Context Embedding
+        mlp_context_embedding = Embedding(context_num, 32, input_length=context.shape[1])(context)
+        mlp_context_latent = Flatten()(mlp_context_embedding)
+
         # GMF layers
         gmf_mul = Multiply()([gmf_user_embedding, gmf_item_embedding])
 
         # MLP layers
-        mlp_concat = Concatenate()([mlp_user_embedding, mlp_item_embedding])
+        mlp_concat = Concatenate()([mlp_user_embedding, mlp_item_embedding, mlp_context_latent])
         mlp_dropout = Dropout(0.2)(mlp_concat)
 
         # Layer1
@@ -59,8 +64,9 @@ class NeuMF:
         output_layer = Dense(1, kernel_initializer='lecun_uniform', name='output_layer')(merged_vector) # 1,1 / h(8,1)초기화
 
         # Model
-        self.model = Model([user, item], output_layer)
+        self.model = Model([user, item, context], output_layer)
 
     def get_model(self):
         model = self.model
         return model
+
